@@ -15,4 +15,4 @@ idl-build = ["anchor-lang/idl-build"]
 
 [dependencies]
 anchor-lang = { path = "../../../../../lang" }
-puppet = { path = "../puppet", features = ["cpi"] }
+puppet = { path = "../puppet", features = ["no-entrypoint"] }

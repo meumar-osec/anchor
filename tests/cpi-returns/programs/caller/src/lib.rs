@@ -19,6 +19,7 @@ pub mod caller {
         let cpi_program = ctx.accounts.cpi_return_program.to_account_info();
         let cpi_accounts = CpiReturn {
             account: ctx.accounts.cpi_return.to_account_info(),
+            __anchor_phantom: std::marker::PhantomData,
         };
         let cpi_ctx = CpiContext::new(cpi_program, cpi_accounts);
         let result = callee::cpi::return_u64(cpi_ctx)?;
@@ -31,6 +32,7 @@ pub mod caller {
         let cpi_program = ctx.accounts.cpi_return_program.to_account_info();
         let cpi_accounts = CpiReturn {
             account: ctx.accounts.cpi_return.to_account_info(),
+            __anchor_phantom: std::marker::PhantomData,
         };
         let cpi_ctx = CpiContext::new(cpi_program, cpi_accounts);
         let result = callee::cpi::return_struct(cpi_ctx)?;
@@ -43,6 +45,7 @@ pub mod caller {
         let cpi_program = ctx.accounts.cpi_return_program.to_account_info();
         let cpi_accounts = CpiReturn {
             account: ctx.accounts.cpi_return.to_account_info(),
+            __anchor_phantom: std::marker::PhantomData,
         };
         let cpi_ctx = CpiContext::new(cpi_program, cpi_accounts);
         let result = callee::cpi::return_vec(cpi_ctx)?;

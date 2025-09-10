@@ -13,6 +13,7 @@ mod puppet_master {
         let cpi_program = ctx.accounts.puppet_program.to_account_info();
         let cpi_accounts = SetData {
             puppet: ctx.accounts.puppet.to_account_info(),
+            __anchor_phantom: std::marker::PhantomData,
         };
         let cpi_ctx = CpiContext::new(cpi_program, cpi_accounts);
         puppet::cpi::set_data(cpi_ctx, data)

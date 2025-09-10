@@ -22,15 +22,16 @@ pub fn gen_cpi_mod(idl: &Idl) -> proc_macro2::TokenStream {
 }
 
 fn gen_cpi_instructions(idl: &Idl) -> proc_macro2::TokenStream {
-    let ixs = idl.instructions.iter().map(|ix| {
+    let ixs = idl.instructions.iter().filter_map(|ix| {
+        // Skip instructions with empty accounts as they can't be used in CPI contexts
+        if ix.accounts.is_empty() {
+            return None;
+        }
+
         let method_name = format_ident!("{}", ix.name);
         let accounts_ident = format_ident!("{}", ix.name.to_camel_case());
 
-        let accounts_generic = if ix.accounts.is_empty() {
-           quote!()
-        } else {
-            quote!(<'info>)
-        };
+        let accounts_generic = quote!(<'info>);
 
         let args = ix.args.iter().map(|arg| {
             let name = format_ident!("{}", arg.name);
@@ -63,7 +64,7 @@ fn gen_cpi_instructions(idl: &Idl) -> proc_macro2::TokenStream {
             )
         };
 
-        quote! {
+        Some(quote! {
             pub fn #method_name<'a, 'b, 'c, 'info>(
                 ctx: anchor_lang::context::CpiContext<'a, 'b, 'c, 'info, accounts::#accounts_ident #accounts_generic>,
                 #(#args),*
@@ -93,7 +94,7 @@ fn gen_cpi_instructions(idl: &Idl) -> proc_macro2::TokenStream {
                     |_| { #ret_value }
                 )
             }
-        }
+        })
     });
 
     quote! {

@@ -16,4 +16,4 @@ default = []
 [dependencies]
 anchor-lang = { path = "../../../../lang" }
 anchor-spl = { path = "../../../../spl" }
-lockup = { path = "../lockup", features = ["cpi"] }
+lockup = { path = "../lockup", features = ["no-entrypoint"] }

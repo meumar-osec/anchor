@@ -26,6 +26,7 @@ pub mod declare_program {
             external::cpi::accounts::Update {
                 authority: ctx.accounts.authority.to_account_info(),
                 my_account: cpi_my_account.to_account_info(),
+                __anchor_phantom: std::marker::PhantomData,
             },
         );
         external::cpi::update(cpi_ctx, value)?;
@@ -46,7 +47,9 @@ pub mod declare_program {
                 update: external::cpi::accounts::Update {
                     authority: ctx.accounts.authority.to_account_info(),
                     my_account: cpi_my_account.to_account_info(),
+                    __anchor_phantom: std::marker::PhantomData,
                 },
+                __anchor_phantom: std::marker::PhantomData,
             },
         );
         external::cpi::update_composite(cpi_ctx, 42)?;
@@ -61,7 +64,9 @@ pub mod declare_program {
                     authority: ctx.accounts.authority.to_account_info(),
                     my_account: cpi_my_account.to_account_info(),
                     program: ctx.accounts.external_program.to_account_info(),
+                    __anchor_phantom: std::marker::PhantomData,
                 },
+                __anchor_phantom: std::marker::PhantomData,
             },
         );
         external::cpi::update_non_instruction_composite(cpi_ctx, value)?;

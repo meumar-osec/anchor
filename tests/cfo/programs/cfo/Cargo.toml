@@ -19,7 +19,7 @@ test = []
 anchor-lang = { path = "../../../../lang" }
 anchor-spl = { path = "../../../../spl" }
 spl-token = { version = "3.5.0", features = ["no-entrypoint"] }
-swap = { path = "../../deps/swap/programs/swap", features = ["cpi"] }
+swap = { path = "../../deps/swap/programs/swap", features = ["no-entrypoint"] }
 serum_dex = { path = "../../deps/openbook-dex/dex", features = ["no-entrypoint"] }
-registry = { path = "../../deps/stake/programs/registry", features = ["cpi"] }
-lockup = { path = "../../deps/stake/programs/lockup", features = ["cpi"] }
+registry = { path = "../../deps/stake/programs/registry", features = ["no-entrypoint"] }
+lockup = { path = "../../deps/stake/programs/lockup", features = ["no-entrypoint"] }

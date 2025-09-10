@@ -160,7 +160,7 @@ pub fn generate(
             .collect()
     };
     let generics = if account_struct_fields.is_empty() {
-        quote! {}
+        quote! {<'info>}
     } else {
         quote! {<'info>}
     };
@@ -168,6 +168,21 @@ pub fn generate(
         "#[doc = \" Generated CPI struct of the accounts for [`{name}`].\"]"
     ))
     .unwrap();
+    
+    let struct_fields = if account_struct_fields.is_empty() {
+        quote! {
+            pub __anchor_phantom: std::marker::PhantomData<&'info ()>,
+        }
+    } else {
+        {
+            let mut fields = account_struct_fields.clone();
+            fields.push(quote! { pub __anchor_phantom: std::marker::PhantomData<&'info ()> });
+            quote! {
+                #(#fields),*
+            }
+        }
+    };
+    
     quote! {
         /// An internal, Anchor generated module. This is used (as an
         /// implementation detail), to generate a CPI struct for a given
@@ -183,7 +198,7 @@ pub fn generate(
 
             #struct_doc
             pub struct #name #generics {
-                #(#account_struct_fields),*
+                #struct_fields
             }
 
             #[automatically_derived]
