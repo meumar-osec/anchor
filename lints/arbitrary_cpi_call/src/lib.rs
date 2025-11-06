@@ -140,7 +140,12 @@ impl<'tcx> LateLintPass<'tcx> for ArbitraryCpiCall {
                     && let Some((lhs, rhs)) = args_as_pubkey_locals(cx, mir, args)
                     && let Some(ret) = destination.as_local()
                 {
-                    program_id_cmps.push(Cmp { lhs, rhs, ret });
+                    program_id_cmps.push(Cmp {
+                        lhs,
+                        rhs,
+                        ret,
+                        is_eq: true,
+                    });
                 } else if let [_receiver, arg] = args.as_ref()
                     && let Some(maybe_pubkey) = pubkey_operand_to_local(cx, mir, &arg.node)
                     && let Some(name) = cx.tcx.opt_item_name(*fn_def_id)
@@ -153,6 +158,17 @@ impl<'tcx> LateLintPass<'tcx> for ArbitraryCpiCall {
                         lhs: maybe_pubkey,
                         rhs: maybe_pubkey,
                         ret,
+                        is_eq: true,
+                    });
+                } else if cx.tcx.is_diagnostic_item(sym::cmp_partialeq_ne, *fn_def_id)
+                    && let Some((lhs, rhs)) = args_as_pubkey_locals(cx, mir, args)
+                    && let Some(ret) = destination.as_local()
+                {
+                    program_id_cmps.push(Cmp {
+                        lhs,
+                        rhs,
+                        ret,
+                        is_eq: false,
                     });
                 }
             }
@@ -166,8 +182,13 @@ impl<'tcx> LateLintPass<'tcx> for ArbitraryCpiCall {
                 && discr_decl.ty.is_bool()
             {
                 if let Some((val, then, els)) = targets.as_static_if() {
-                    let then = if val == 1 { then } else { els };
-                    switches.push(IfThen { discr, then });
+                    let then_block = if val == 1 { then } else { els };
+                    let else_block = if then_block == then { els } else { then };
+                    switches.push(IfThen {
+                        discr,
+                        then: then_block,
+                        els: else_block,
+                    });
                 }
             }
         }
@@ -213,6 +234,7 @@ struct Cmp {
     lhs: Local,
     rhs: Local,
     ret: Local,
+    is_eq: bool,
 }
 
 /// A switch on `discr`, where a truthy value leads to `then`
@@ -220,6 +242,7 @@ struct Cmp {
 struct IfThen {
     discr: Local,
     then: BasicBlock,
+    els: BasicBlock,
 }
 
 /// For a given pubkey [`Local`], identify the [`BasicBlock`]s where its value is known/checked
@@ -236,13 +259,17 @@ fn known_pubkey_basic_blocks(
         // Find comparisons on this pubkey local
         .filter_map(|cmp| {
             (is_same(cmp.lhs, pk, assignment_map) || is_same(cmp.rhs, pk, assignment_map))
-                .then_some(cmp.ret)
+                .then_some((cmp.ret, cmp.is_eq))
         })
         // Find switches on the comparison result, then get the truthy blocks
         .flat_map(|cmp_res| {
-            switches
-                .iter()
-                .filter_map(move |switch| (switch.discr == cmp_res).then_some(switch.then))
+            switches.iter().filter_map(move |switch| {
+                (switch.discr == cmp_res.0).then_some(if cmp_res.1 {
+                    switch.then
+                } else {
+                    switch.els
+                })
+            })
         })
         .collect()
 }
