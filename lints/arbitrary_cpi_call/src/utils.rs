@@ -28,18 +28,31 @@ pub enum Origin {
     Unknown,
 }
 
-pub fn check_function_args_has_pubkey_type(
+/// If these function args are two `Pubkey` references, return the corresponding
+/// [`Local`]s.
+pub fn args_as_pubkey_locals(
     cx: &LateContext<'_>,
     mir: &MirBody<'_>,
     args: &[Spanned<Operand>],
-) -> (Option<Local>, Option<Local>) {
-    if let Some(lhs_local) = get_local_from_operand(args.get(0))
-        && let Some(rhs_local) = get_local_from_operand(args.get(1))
-        && (is_pubkey_type(cx, mir, &lhs_local) || is_pubkey_type(cx, mir, &rhs_local))
-    {
-        return (Some(lhs_local), Some(rhs_local));
+) -> Option<(Local, Local)> {
+    Option::zip(
+        pubkey_operand_to_local(cx, mir, &args.get(0)?.node),
+        pubkey_operand_to_local(cx, mir, &args.get(1)?.node),
+    )
+}
+
+/// If this [`Operand`] refers to a [`Local`] that is a `Pubkey`, return it
+pub fn pubkey_operand_to_local(
+    cx: &LateContext<'_>,
+    mir: &MirBody<'_>,
+    op: &Operand<'_>,
+) -> Option<Local> {
+    match op {
+        Operand::Copy(place) | Operand::Move(place) => place
+            .as_local()
+            .filter(|local| is_pubkey_type(cx, mir, &local)),
+        Operand::Constant(_) => None,
     }
-    return (None, None);
 }
 
 pub fn is_pubkey_type(cx: &LateContext<'_>, mir: &MirBody<'_>, local: &Local) -> bool {
@@ -64,7 +77,7 @@ pub fn get_local_from_operand<'tcx>(operand: Option<&Spanned<Operand<'tcx>>>) ->
 
 pub fn check_program_id_included_in_conditional_blocks(
     cpi_ctx_local: &Local,
-    program_id_cmp: &HashMap<BasicBlock, Vec<Local>>,
+    cmps: &[crate::Cmp],
     assignment_map: &HashMap<Local, Vec<Local>>,
 ) -> bool {
     let mut cpi_context_references: Vec<Local> = Vec::new();
@@ -74,11 +87,14 @@ pub fn check_program_id_included_in_conditional_blocks(
             v.iter().for_each(|l| cpi_context_references.push(*l));
         }
     }
-    for (_, v) in program_id_cmp {
-        if v.iter().any(|l| cpi_context_references.contains(l)) {
-            return true;
-        }
+
+    if cmps
+        .iter()
+        .any(|l| cpi_context_references.contains(&l.lhs) || cpi_context_references.contains(&l.rhs))
+    {
+        return true;
     }
+
     false
 }
 
