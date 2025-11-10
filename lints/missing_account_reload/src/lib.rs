@@ -119,15 +119,17 @@ impl<'tcx> LateLintPass<'tcx> for MissingAccountReload {
                             && let Operand::Move(account) = account.node
                             && let Some(local) = account.as_local()
                         {
-                            let local_decl = &mir.local_decls[local];
-                            let span = local_decl.source_info.span;
-                            if let Ok(snippet) = cx.sess().source_map().span_to_snippet(span) {
-                                if let Some(account_name) = extract_context_account(&snippet) {
-                                    account_reloads
-                                        .entry(account_name)
-                                        .or_insert_with(HashSet::new)
-                                        .insert(bb);
-                                }
+                            if let Some(account_name) = check_local_and_assignment_locals(
+                                cx,
+                                mir,
+                                &local,
+                                &transitive_assignment_reverse_map,
+                                &mut HashSet::new(),
+                            ) {
+                                account_reloads
+                                    .entry(account_name)
+                                    .or_insert_with(HashSet::new)
+                                    .insert(bb);
                             }
                         }
                     }
@@ -136,8 +138,8 @@ impl<'tcx> LateLintPass<'tcx> for MissingAccountReload {
                         cpi_calls.insert(bb, *fn_span);
                     } else if *diag_item == deref_method_sym {
                         if let Some(account) = args.get(0)
-                        && let Operand::Move(account) = account.node
-                        && let Some(local) = account.as_local()
+                            && let Operand::Move(account) = account.node
+                            && let Some(local) = account.as_local()
                         {
                             if let Some(account_name) = check_local_and_assignment_locals(
                                 cx,
@@ -353,7 +355,16 @@ fn reachable_blocks(graph: &BasicBlocks, from: BasicBlock, to: &HashSet<BasicBlo
     false
 }
 
-fn extract_context_account(snippet: &str) -> Option<String> {
+fn extract_context_account(line: &str) -> Option<String> {
+    // Remove comments from the line before processing
+    let snippet = line
+        .split("//")
+        .next()
+        .unwrap_or(line)
+        .split("/*")
+        .next()
+        .unwrap_or(line)
+        .trim();
     if let Some(start) = snippet.find(".accounts.") {
         let prefix_start = snippet[..start]
             .rfind(|c: char| !c.is_alphanumeric() && c != '_')
